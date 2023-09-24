@@ -1,0 +1,117 @@
+var images = {
+  '1984-03-01': getWeeklyLandsat5Composite('1984-09-30'),
+  '1985-01-01': getWeeklyLandsat5Composite('1985-09-30'),
+  '1986-01-01': getWeeklyLandsat5Composite('1986-09-30'),
+  '1987-01-01': getWeeklyLandsat5Composite('1987-09-30'),
+  '1988-01-01': getWeeklyLandsat5Composite('1988-09-30'),
+  '1989-01-01': getWeeklyLandsat5Composite('1989-09-30'),
+  '1990-01-01': getWeeklyLandsat5Composite('1990-09-30'),
+  '1991-01-01': getWeeklyLandsat5Composite('1991-09-30'),
+  '1992-01-01': getWeeklyLandsat5Composite('1992-09-30'),
+  '1993-01-01': getWeeklyLandsat5Composite('1993-09-30'),
+  '1994-01-01': getWeeklyLandsat5Composite('1994-09-30'),
+  '1995-01-01': getWeeklyLandsat5Composite('1995-09-30'),
+  '1996-01-01': getWeeklyLandsat5Composite('1996-09-30'),
+  '1997-01-01': getWeeklyLandsat5Composite('1997-09-30'),
+  '1998-01-01': getWeeklyLandsat5Composite('1998-09-30'),
+  '1999-01-01': getWeeklyLandsat5Composite('1999-09-30'),
+  '2000-01-01': getWeeklyLandsat5Composite('2000-09-30'),
+  '2013-01-01': getWeeklyLandsat8Composite('2013-09-30'),
+  '2017-01-01': getWeeklyLandsat8Composite('2017-09-30'),
+  '2018-01-01': getWeeklyLandsat8Composite('2018-09-30'),
+  '2019-01-01': getWeeklyLandsat8Composite('2019-09-30'),
+  '2020-01-01': getWeeklyLandsat8Composite('2020-09-30'),
+  '2021-01-01': getWeeklyLandsat8Composite('2021-09-30'),
+  '2022-01-01': getWeeklyLandsat8Composite('2022-09-30'),
+  '2023-01-01': getWeeklyLandsat8Composite('2023-09-24'),
+};
+
+function getWeeklyLandsat5Composite(date) {
+  var startDate = ee.Date(date);
+  var endDate = startDate.advance(1, 'week');
+  
+  var image = ee.ImageCollection('LANDSAT/LT05/C02/T1_L2')
+                .filterDate(startDate, endDate)
+                .select(['SR_B3', 'SR_B2', 'SR_B1'])  // Red, Green, Blue
+                .filterMetadata('CLOUD_COVER', 'less_than', 1)
+                .mean();
+  
+  // Visualize the image
+  var visualization = {
+    min: 6000,
+    max: 18000,
+    bands: ['SR_B3', 'SR_B2', 'SR_B1']  // Red, Green, Blue
+  };
+  
+  return image.visualize(visualization);
+}
+
+
+function getWeeklyLandsat8Composite(date) {
+  var startDate2 = ee.Date(date);
+  var endDate2 = startDate2.advance(1, 'week');
+  
+  var image2 = ee.ImageCollection('LANDSAT/LC08/C02/T1')
+                .filterDate(startDate2, endDate2)
+                .select(['B4', 'B3', 'B2'])  // Red, Green, Blue
+                .filterMetadata('CLOUD_COVER', 'less_than', 1)
+                .mean();
+  
+  // Visualize the image
+  var visualization2 = {
+    min: 6000,
+    max: 12000,
+    gamma: 1.4,
+    bands: ['B4', 'B3', 'B2']  // Red, Green, Blue
+  };
+  
+  return image2.visualize(visualization2);
+}
+
+// Create the left map, and have it display layer 0.
+var leftMap = ui.Map();
+leftMap.setControlVisibility(true);
+var leftSelector = addLayerSelector(leftMap, 0, 'top-left');
+
+// Create the right map, and have it display layer 1.
+var rightMap = ui.Map();
+rightMap.setControlVisibility(true);
+var rightSelector = addLayerSelector(rightMap, 1, 'top-right');
+
+// Adds a layer selection widget to the given map, to allow users to change
+// which image is displayed in the associated map.
+function addLayerSelector(mapToChange, defaultValue, position) {
+  var label = ui.Label('Choose an image to visualize');
+
+  // This function changes the given map to show the selected image.
+  function updateMap(selection) {
+    mapToChange.layers().set(0, ui.Map.Layer(images[selection]));
+  }
+
+  // Configure a selection dropdown to allow the user to choose between images,
+  // and set the map to update when a user makes a selection.
+  var select = ui.Select({items: Object.keys(images), onChange: updateMap});
+  select.setValue(Object.keys(images)[defaultValue], true);
+
+  var controlPanel =
+      ui.Panel({widgets: [label, select], style: {position: position}});
+
+  mapToChange.add(controlPanel);
+}
+
+/*
+ * Tie everything together
+ */
+
+// Create a SplitPanel to hold the adjacent, linked maps.
+var splitPanel = ui.SplitPanel({
+  firstPanel: leftMap,
+  secondPanel: rightMap,
+  wipe: true,
+  style: {stretch: 'both'}
+});
+
+// Set the SplitPanel as the only thing in the UI root.
+ui.root.widgets().reset([splitPanel]);
+var linker = ui.Map.Linker([leftMap, rightMap]);
+//leftMap.setCenter(-48.84249160172172,-26.300002958096833, 5);
